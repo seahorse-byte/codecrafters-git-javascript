@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
-
+const crypto = require("crypto");
 console.error("Logs from your program will appear here!");
 
 const command = process.argv[2];
@@ -12,6 +12,9 @@ switch (command) {
     break;
   case "cat-file":
     catFile();
+    break;
+  case "hash-object":
+    hashObject();
     break;
   default:
     throw new Error(`Unknown command ${command}`);
@@ -44,4 +47,25 @@ function catFile() {
   const nullByteIndex = bufferToString.indexOf("\x00");
   const content = bufferToString.substring(nullByteIndex + 1);
   process.stdout.write(content);
+}
+
+function hashObject() {
+  const fileName = process.argv[4];
+
+  const fileContent = fs.readFileSync(path.join(process.cwd(), fileName));
+  const blob = `blob ${fileContent.length}\x00${fileContent.toString()}`;
+
+  const objBuffer = Buffer.from(blob);
+  const compressedBlob = zlib.deflateSync(objBuffer);
+  const hash = crypto.createHash("sha1").update(blob).digest("hex");
+
+  const dir = hash.substring(0, 2);
+  const file = hash.substring(2);
+
+  const objectPath = path.join(process.cwd(), ".git", "objects", dir, file);
+  fs.mkdirSync(path.join(process.cwd(), ".git", "objects", dir), {
+    recursive: true,
+  });
+  fs.writeFileSync(objectPath, compressedBlob);
+  process.stdout.write(hash);
 }

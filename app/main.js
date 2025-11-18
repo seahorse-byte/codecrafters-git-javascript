@@ -16,6 +16,9 @@ switch (command) {
   case "hash-object":
     hashObject();
     break;
+  case "ls-tree":
+    lsTree();
+    break;
   default:
     throw new Error(`Unknown command ${command}`);
 }
@@ -68,4 +71,50 @@ function hashObject() {
   });
   fs.writeFileSync(objectPath, compressedBlob);
   process.stdout.write(hash);
+}
+
+function lsTree() {
+  const hash = process.argv[4];
+
+  const dir = hash.substring(0, 2);
+  const file = hash.substring(2);
+
+  const objectPath = path.join(process.cwd(), ".git", "objects", dir, file);
+  const compressed = fs.readFileSync(objectPath);
+  const buffer = zlib.unzipSync(compressed);
+
+  const nullByteIndex = buffer.indexOf(0);
+  const body = buffer.subarray(nullByteIndex + 1);
+
+  const entries = [];
+  let i = 0;
+
+  while (i < body.length) {
+    const modeEnd = body.indexOf(0x20, i); // space character
+    if (modeEnd === -1) break;
+    const mode = body.toString("utf8", i, modeEnd);
+
+    const nameEnd = body.indexOf(0x00, modeEnd + 1);
+    if (nameEnd === -1) break;
+    const name = body.toString("utf8", modeEnd + 1, nameEnd);
+
+    const shaStart = nameEnd + 1;
+    const shaBuffer = body.subarray(shaStart, shaStart + 20);
+    const sha = shaBuffer.toString("hex");
+
+    entries.push({ mode, name, sha });
+
+    i = shaStart + 20;
+  }
+
+  const nameOnly = process.argv[3] === "--name-only";
+  const output = entries
+    .map((entry) =>
+      nameOnly ? entry.name : `${entry.mode} ${entry.sha} ${entry.name}`
+    )
+    .join("\n");
+
+  if (output.length > 0) {
+    process.stdout.write(output + "\n");
+  }
 }

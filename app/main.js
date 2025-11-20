@@ -21,6 +21,10 @@ switch (command) {
   case "write-tree":
     writeTree();
     break;
+
+  case "commit-tree":
+    commitTree();
+    break;
   default:
     throw new Error(`Unknown command ${command}`);
 }
@@ -187,4 +191,38 @@ function writeTreeForDirectory(dirPath) {
   fs.writeFileSync(path.join(objectDir, file), compressed);
 
   return hash;
+}
+
+function commitTree() {
+  // Expected CLI: commit-tree <tree_sha> -p <parent_sha> -m <message>
+  const treeHash = process.argv[3];
+  const parentHash = process.argv[5];
+  const message = process.argv.slice(7).join(" ");
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const authorLine = `author Olsi Gjeci <olsi@codecrafters.io> ${timestamp} +0000\n`;
+  const committerLine = `committer Olsi Gjeci <olsi@codecrafters.io> ${timestamp} +0000\n`;
+
+  const commitText = `tree ${treeHash}\n${
+    parentHash ? `parent ${parentHash}\n` : ""
+  }${authorLine}${committerLine}\n${message}\n`;
+
+  const commitContentBuffer = Buffer.from(commitText, "utf8");
+  const header = Buffer.from(
+    `commit ${commitContentBuffer.length}\x00`,
+    "utf8"
+  );
+  const store = Buffer.concat([header, commitContentBuffer]);
+
+  const hash = crypto.createHash("sha1").update(store).digest("hex");
+
+  const dir = hash.substring(0, 2);
+  const file = hash.substring(2);
+  const objectDir = path.join(process.cwd(), ".git", "objects", dir);
+  const compressed = zlib.deflateSync(store);
+
+  fs.mkdirSync(objectDir, { recursive: true });
+  fs.writeFileSync(path.join(objectDir, file), compressed);
+
+  process.stdout.write(hash + "\n");
 }

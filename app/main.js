@@ -25,6 +25,10 @@ switch (command) {
   case "commit-tree":
     commitTree();
     break;
+
+  case "clone":
+    clone();
+    break;
   default:
     throw new Error(`Unknown command ${command}`);
 }
@@ -36,6 +40,7 @@ function createGitDirectory() {
   });
   fs.mkdirSync(path.join(process.cwd(), ".git", "refs"), { recursive: true });
 
+  // create the HEAD file and point it to the main branch by adding "ref: refs/heads/main\n" to it
   fs.writeFileSync(
     path.join(process.cwd(), ".git", "HEAD"),
     "ref: refs/heads/main\n"
@@ -225,4 +230,16 @@ function commitTree() {
   fs.writeFileSync(path.join(objectDir, file), compressed);
 
   process.stdout.write(hash + "\n");
+}
+
+function clone() {
+  //   The tester will run your program like this:
+
+  // $ /path/to/your_program.sh clone https://github.com/blah/blah <some_dir>
+  // Your program must create <some_dir> and clone the given repository into it.
+
+  const repoUrl = process.argv[3];
+  const repoPath = process.argv[4];
+
+  // clone the repository into the given directory
 }

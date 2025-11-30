@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 const crypto = require("crypto");
-const https = require("https");
+const { clone } = require("./git");
 
 const command = process.argv[2];
 
@@ -28,7 +28,7 @@ switch (command) {
     break;
 
   case "clone":
-    clone();
+    clone(process.argv[3], process.argv[4]);
     break;
   default:
     throw new Error(`Unknown command ${command}`);
@@ -233,63 +233,4 @@ function commitTree() {
   fs.writeFileSync(path.join(objectDir, file), compressed);
 
   process.stdout.write(hash + "\n");
-}
-
-async function clone() {
-  //   The tester will run your program like this:
-  // $ /path/to/your_program.sh clone https://github.com/blah/blah <some_dir>
-  // Your program must create <some_dir> and clone the given repository into it.
-
-  const repoUrl = process.argv[3];
-  // const repoPath = process.argv[4];
-  console.log("Arguments:", process.argv);
-
-  function _fetchRefsWithLogging(repoUrl) {
-    return new Promise((resolve, reject) => {
-      const url = new URL(`${repoUrl}/info/refs?service=git-upload-pack`);
-      console.log(`🔍 Connecting to ${url}`);
-
-      const req = https.request(url, (res) => {
-        // --- 1. Log Status & Headers ---
-        console.log(`\nS: ${res.statusCode} ${res.statusMessage}`);
-        Object.keys(res.headers).forEach((key) => {
-          console.log(`S: ${key}: ${res.headers[key]}`);
-        });
-        console.log("S:"); // Empty line separator
-        if (res.statusCode !== 200)
-          return reject(new Error(`HTTP ${res.statusCode}`));
-        let data = [];
-        res.on("data", (c) => data.push(c));
-        res.on("end", () => {
-          const buffer = Buffer.concat(data);
-
-          // --- 2. Log the Raw Body ---
-          // We convert buffer to string, then make invisible chars visible
-          const rawString = buffer.toString("utf8");
-
-          // Split by logical packet lines (usually end with newline)
-          const lines = rawString.split("\n");
-
-          lines.slice(0, 10).forEach((line) => {
-            if (line.length === 0) return;
-            let visualLine = line.replace(/\0/g, "\\0");
-            console.log(`S: ${visualLine}\\n`);
-          });
-
-          resolve(buffer);
-        });
-      });
-      req.on("error", reject);
-      req.end();
-    });
-  }
-
-  try {
-    await _fetchRefsWithLogging(repoUrl);
-    console.log("Clone completed successfully");
-    process.exit(0);
-  } catch (error) {
-    console.error("Clone failed:", error.message);
-    process.exit(1);
-  }
 }

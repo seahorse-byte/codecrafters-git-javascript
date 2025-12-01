@@ -474,9 +474,8 @@ async function extractTree(treeHash, currentPath, objMap) {
 async function clone(repoUrl, targetDir) {
   try {
     // Create target directory
-    if (targetDir) {
-      createGitDirectory(targetDir);
-    }
+    if (targetDir) fs.mkdirSync(targetDir, { recursive: true });
+
     const workDir = targetDir || ".";
 
     console.log("--- Step 1: Discovery ---");

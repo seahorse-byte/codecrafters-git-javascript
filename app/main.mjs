@@ -1,4 +1,12 @@
-import { clone, createGitDirectory, catFile, hashObject, lsTree, writeTree, commitTree } from "./git";
+import {
+  clone,
+  createGitDirectory,
+  catFile,
+  hashObject,
+  lsTree,
+  writeTree,
+  commitTree,
+} from "./git.mjs";
 
 const command = process.argv[2];
 

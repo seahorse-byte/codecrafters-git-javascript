@@ -475,7 +475,7 @@ async function clone(repoUrl, targetDir) {
   try {
     // Create target directory
     if (targetDir) {
-      fs.mkdirSync(targetDir, { recursive: true });
+      createGitDirectory(targetDir);
     }
     const workDir = targetDir || ".";
 

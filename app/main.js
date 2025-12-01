@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 const crypto = require("crypto");
-const { clone } = require("./git");
+const { clone, createGitDirectory } = require("./git");
 
 const command = process.argv[2];
 
@@ -32,21 +32,6 @@ switch (command) {
     break;
   default:
     throw new Error(`Unknown command ${command}`);
-}
-
-function createGitDirectory() {
-  fs.mkdirSync(path.join(process.cwd(), ".git"), { recursive: true });
-  fs.mkdirSync(path.join(process.cwd(), ".git", "objects"), {
-    recursive: true,
-  });
-  fs.mkdirSync(path.join(process.cwd(), ".git", "refs"), { recursive: true });
-
-  // create the HEAD file and point it to the main branch by adding "ref: refs/heads/main\n" to it
-  fs.writeFileSync(
-    path.join(process.cwd(), ".git", "HEAD"),
-    "ref: refs/heads/main\n"
-  );
-  console.log("Initialized git directory");
 }
 
 function catFile() {

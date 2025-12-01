@@ -5,6 +5,21 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
+function createGitDirectory() {
+  fs.mkdirSync(path.join(process.cwd(), ".git"), { recursive: true });
+  fs.mkdirSync(path.join(process.cwd(), ".git", "objects"), {
+    recursive: true,
+  });
+  fs.mkdirSync(path.join(process.cwd(), ".git", "refs"), { recursive: true });
+
+  // create the HEAD file and point it to the main branch by adding "ref: refs/heads/main\n" to it
+  fs.writeFileSync(
+    path.join(process.cwd(), ".git", "HEAD"),
+    "ref: refs/heads/main\n"
+  );
+  console.log("Initialized git directory");
+}
+
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
@@ -531,4 +546,4 @@ async function clone(repoUrl, targetDir) {
   }
 }
 
-module.exports = { clone };
+module.exports = { clone, createGitDirectory };

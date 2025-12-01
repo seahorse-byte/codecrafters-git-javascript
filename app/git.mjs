@@ -1,9 +1,9 @@
-const https = require("https");
-const { URL } = require("url");
-const zlib = require("zlib");
-const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
+import https from "https";
+import { URL } from "url";
+import zlib from "zlib";
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 function createGitDirectory() {
   fs.mkdirSync(path.join(process.cwd(), ".git"), { recursive: true });

@@ -1,12 +1,4 @@
-const {
-  clone,
-  createGitDirectory,
-  catFile,
-  hashObject,
-  lsTree,
-  writeTree,
-  commitTree,
-} = require("./git");
+import { clone, createGitDirectory, catFile, hashObject, lsTree, writeTree, commitTree } from "./git";
 
 const command = process.argv[2];
 

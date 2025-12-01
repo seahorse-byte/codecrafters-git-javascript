@@ -731,7 +731,7 @@ async function clone(repoUrl, targetDir) {
   }
 }
 
-module.exports = {
+export {
   clone,
   createGitDirectory,
   catFile,

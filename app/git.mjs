@@ -326,42 +326,128 @@ function parsePktLines(buffer) {
 // STEP 2: NEGOTIATION (POST Request)
 // ------------------------------------------------------------------
 
+// function fetchPackfile(repoUrl, wantHash) {
+//   return new Promise((resolve, reject) => {
+//     const url = new URL(`${repoUrl}/git-upload-pack`);
+//     const caps = "multi_ack_detailed side-band-64k agent=git/node-clone";
+//     const wantLine = `want ${wantHash} ${caps}\n`;
+//     const length = (wantLine.length + 4).toString(16).padStart(4, "0");
+//     const body = `${length}${wantLine}00000009done\n`;
+
+//     const options = {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/x-git-upload-pack-request",
+//         "user-agent": "git/node-clone",
+//       },
+//     };
+
+//     console.log(`\n📤 Sending Negotiation Request...`);
+//     const req = https.request(url, options, (res) => {
+//       if (res.statusCode !== 200)
+//         return reject(new Error(`HTTP ${res.statusCode}`));
+//       const chunks = [];
+//       let totalSize = 0;
+//       console.log(`\n📥 Receiving Packfile Stream...`);
+//       res.on("data", (chunk) => {
+//         chunks.push(chunk);
+//         totalSize += chunk.length;
+//         process.stdout.write(
+//           `\rDownloaded: ${(totalSize / 1024).toFixed(2)} KB`
+//         );
+//       });
+//       res.on("end", () => {
+//         console.log("\n✅ Download Complete.");
+//         resolve(Buffer.concat(chunks));
+//       });
+//     });
+//     req.on("error", reject);
+//     req.write(body);
+//     req.end();
+//   });
+// }
+
 function fetchPackfile(repoUrl, wantHash) {
   return new Promise((resolve, reject) => {
+    // 1. The Endpoint
+    // In Part 1, we used "/info/refs".
+    // In Part 2, for the actual data, we use "/git-upload-pack".
     const url = new URL(`${repoUrl}/git-upload-pack`);
-    const caps = "multi_ack_detailed side-band-64k agent=git/node-clone";
-    const wantLine = `want ${wantHash} ${caps}\n`;
-    const length = (wantLine.length + 4).toString(16).padStart(4, "0");
-    const body = `${length}${wantLine}00000009done\n`;
 
+    // 2. Capabilities
+    // We must tell the server what features we support.
+    // 'side-band-64k' is CRITICAL. It allows the server to send
+    // progress updates and data in the same stream (multiplexing).
+    const caps = "multi_ack_detailed side-band-64k agent=git/node-clone";
+
+    // 3. The Command
+    // We construct the text: "want <hash> <capabilities>\n"
+    const wantLine = `want ${wantHash} ${caps}\n`;
+
+    // 4. The Pkt-Line Header (The Math)
+    // We calculate the length of the string PLUS 4 bytes for the header.
+    // We convert to Hex (.toString(16)) and pad with zeros (padStart).
+    const length = (wantLine.length + 4).toString(16).padStart(4, "0");
+
+    // 5. The Full Payload
+    // This is the specific byte sequence we send:
+    // [Header] [Want Command] [Flush 0000] [Header] [Done Command]
+    const body = `${length}${wantLine}00000009done\n`;
+    // example : 0066want 7fd1a60b01f91b314f59955a4e4d4e80d8edf11d multi_ack_detailed side-band-64k agent=git/node-clone\n00000009done\n
+    // Breakdown of the parts:
+    // 0066: The calculated length of the first line.
+    // want 7fd1...: The command and the hash we need.
+    // multi_ack...: The capabilities we support.
+    // \n: The newline ending the first command.
+    // 0000: The Flush Packet (Separator).
+    // 0009: Length of the next command.
+    // done\n: The final command.
+
+    // 6. Request Options
     const options = {
-      method: "POST",
+      method: "POST", // Negotiation requires POST
       headers: {
+        // This specific Content-Type is required by Git
         "Content-Type": "application/x-git-upload-pack-request",
-        "user-agent": "git/node-clone",
+        "user-agent": "git/node-clone", // GitHub sometimes rejects requests without a UA
       },
     };
 
     console.log(`\n📤 Sending Negotiation Request...`);
+
+    // 7. Making the Request
     const req = https.request(url, options, (res) => {
       if (res.statusCode !== 200)
         return reject(new Error(`HTTP ${res.statusCode}`));
+
       const chunks = [];
       let totalSize = 0;
       console.log(`\n📥 Receiving Packfile Stream...`);
+
+      // 8. Handling the Stream
+      // The server responds with BINARY data (The Packfile).
+      // We cannot use .toString() here yet. We must collect raw Buffer chunks.
       res.on("data", (chunk) => {
         chunks.push(chunk);
         totalSize += chunk.length;
+        // Simple progress bar
         process.stdout.write(
           `\rDownloaded: ${(totalSize / 1024).toFixed(2)} KB`
         );
       });
+
+      // 9. Assembly
+      // When the download finishes, we glue all chunks into one giant Buffer.
       res.on("end", () => {
         console.log("\n✅ Download Complete.");
         resolve(Buffer.concat(chunks));
       });
     });
+
     req.on("error", reject);
+
+    // 10. Fire!
+    // We write our constructed Pkt-Line body to the server.
     req.write(body);
     req.end();
   });
